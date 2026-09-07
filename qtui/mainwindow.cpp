@@ -75,6 +75,7 @@ void log_config_diff(const Config &o, const Config &n) {
   CFG_DIFF(ui_height)
   CFG_DIFF(panel_width)
   CFG_DIFF(default_res)
+  CFG_DIFF(capture_interval_ms)
   CFG_DIFF(can_enabled)
   CFG_DIFF(can_send_if)
   CFG_DIFF(can_recv_if)
@@ -381,7 +382,8 @@ void MainWindow::onCapture() {
     capture_dir_ = config::g.saveImg_root + "/" + ts;
     fs::create_directories(capture_dir_);
     capture_idx_ = 0;
-    SPDLOG_INFO("capture: 开始采集, 保存目录={}", capture_dir_);
+    SPDLOG_INFO("capture: 开始采集, 保存目录={} 间隔={}ms", capture_dir_,
+                config::g.capture_interval_ms);
   } else {
     SPDLOG_INFO("capture: 停止采集, 共 {} 张", capture_idx_);
   }
@@ -529,10 +531,20 @@ void MainWindow::pollCamera() {
     pipeline::g_has_last = true;
     if (!isMinimized()) video_->setFrame(frame);  /* 最小化时跳过渲染 */
     if (pipeline::g_capture_mode.load() && !capture_dir_.empty()) {
-      char sp[512];
-      snprintf(sp, sizeof(sp), "%s/%06d.jpg", capture_dir_.c_str(),
-               capture_idx_++);
-      cv::imwrite(sp, frame);
+      /* 按设定间隔存图(capture_interval_ms, 0=每帧都存);
+       * 相机定时器 60ms 一拍,实际分辨率约 60ms */
+      static auto last_save = std::chrono::steady_clock::now();
+      int interval_ms = std::max(0, config::g.capture_interval_ms);
+      auto now = std::chrono::steady_clock::now();
+      if (interval_ms == 0 ||
+          std::chrono::duration_cast<std::chrono::milliseconds>(now - last_save)
+                  .count() >= interval_ms) {
+        last_save = now;
+        char sp[512];
+        snprintf(sp, sizeof(sp), "%s/%06d.jpg", capture_dir_.c_str(),
+                 capture_idx_++);
+        cv::imwrite(sp, frame);
+      }
     }
   }
 }

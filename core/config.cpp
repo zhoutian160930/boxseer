@@ -82,6 +82,7 @@ static void apply_kv(const std::string &k, const std::string &v) {
   else if (k == "ui_height") g.ui_height = std::atoi(v.c_str());
   else if (k == "panel_width") g.panel_width = std::atoi(v.c_str());
   else if (k == "default_res") g.default_res = std::atoi(v.c_str());
+  else if (k == "capture_interval_ms") g.capture_interval_ms = std::atoi(v.c_str());
   else if (k == "can_enabled") g.can_enabled = (v == "true" || v == "1");
   else if (k == "can_send_if") g.can_send_if = v;
   else if (k == "can_recv_if") g.can_recv_if = v;
@@ -143,6 +144,7 @@ static void write_file() {
   out << "  \"ui_height\": " << g.ui_height << ",\n";
   out << "  \"panel_width\": " << g.panel_width << ",\n";
   out << "  \"default_res\": " << g.default_res << ",\n";
+  out << "  \"capture_interval_ms\": " << g.capture_interval_ms << ",\n";
   out << "  \"can_enabled\": " << (g.can_enabled ? "true" : "false") << ",\n";
   out << "  \"can_send_if\": \"" << g.can_send_if << "\",\n";
   out << "  \"can_recv_if\": \"" << g.can_recv_if << "\",\n";

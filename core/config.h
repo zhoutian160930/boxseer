@@ -28,6 +28,8 @@ struct Config {
   int ui_height = 720;
   int panel_width = 320;
   int default_res = 0;
+  /* 采集图像存图间隔(毫秒)。0=每帧都存。支持热加载。 */
+  int capture_interval_ms = 200;
   /* CAN 通信 */
   bool can_enabled = true;            /* 是否启用 CAN 结果发送 */
   std::string can_send_if = "can0";   /* 发送接口 */
