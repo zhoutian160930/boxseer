@@ -139,7 +139,10 @@ void VideoWidget::mouseMoveEvent(QMouseEvent *e) {
   update();
 }
 
-void VideoWidget::mouseReleaseEvent(QMouseEvent *) { dragging_ = DRAG_NONE; }
+void VideoWidget::mouseReleaseEvent(QMouseEvent *) {
+  if (dragging_ != DRAG_NONE) emit dragFinished();
+  dragging_ = DRAG_NONE;
+}
 
 void VideoWidget::resizeEvent(QResizeEvent *e) {
   QWidget::resizeEvent(e);

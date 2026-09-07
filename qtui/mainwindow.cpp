@@ -47,6 +47,54 @@ std::string trim_path(const std::string &p) {
   }
   return r;
 }
+/* 配置热加载审计:对比新旧 Config,逐字段输出变更(排查外部改参问题) */
+void log_config_diff(const Config &o, const Config &n) {
+#define CFG_DIFF(f)                                    \
+  if (o.f != n.f)                                      \
+    SPDLOG_INFO("[UI][配置热加载] {}: {} -> {}", #f, o.f, n.f);
+  CFG_DIFF(material_class)
+  CFG_DIFF(box_class)
+  CFG_DIFF(target_count)
+  CFG_DIFF(line_left_frac)
+  CFG_DIFF(line_right_frac)
+  CFG_DIFF(yolo_model)
+  CFG_DIFF(label_path)
+  CFG_DIFF(sam_encoder)
+  CFG_DIFF(sam_decoder)
+  CFG_DIFF(detImg_root)
+  CFG_DIFF(saveImg_root)
+  CFG_DIFF(log_root)
+  CFG_DIFF(yolo_threads)
+  CFG_DIFF(use_sam)
+  CFG_DIFF(sam_threads)
+  CFG_DIFF(default_input)
+  CFG_DIFF(fb_model_dir)
+  CFG_DIFF(fb_input_dir)
+  CFG_DIFF(font_path)
+  CFG_DIFF(ui_width)
+  CFG_DIFF(ui_height)
+  CFG_DIFF(panel_width)
+  CFG_DIFF(default_res)
+  CFG_DIFF(can_enabled)
+  CFG_DIFF(can_send_if)
+  CFG_DIFF(can_recv_if)
+  CFG_DIFF(can_id)
+  CFG_DIFF(gpio_enabled)
+  CFG_DIFF(gpio_out_ch)
+  CFG_DIFF(gpio_input_enabled)
+  CFG_DIFF(gpio_input_ch)
+  CFG_DIFF(gpio_poll_us)
+  CFG_DIFF(gpio_input_latch)
+  CFG_DIFF(camera_enabled)
+  CFG_DIFF(camera_iface)
+  CFG_DIFF(camera_ip)
+  CFG_DIFF(camera_timeout_ms)
+  CFG_DIFF(camera_width)
+  CFG_DIFF(camera_height)
+  CFG_DIFF(camera_exposure_us)
+  CFG_DIFF(camera_gain)
+#undef CFG_DIFF
+}
 }  // namespace
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
@@ -83,10 +131,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
             config::g.line_right_frac = (float)r;
             config::mark_dirty();
           });
+  /* 拖线松手才记审计日志(拖动过程中 linesChanged 高频触发,不逐条记) */
+  connect(video_, &VideoWidget::dragFinished, this, [this] {
+    SPDLOG_INFO("[UI] 拖动检测线: left={:.4f} right={:.4f}",
+                config::g.line_left_frac, config::g.line_right_frac);
+  });
   connect(stats_, &StatsPanel::targetChanged, this, [](int v) {
             pipeline::g_target_count.store(v);
             config::g.target_count = v;
             config::mark_dirty();
+            SPDLOG_INFO("[UI] 修改 目标物料数: {}", v);
           });
 
   /* 启动时自动加载摄像头(config 启用时) */
@@ -174,11 +228,15 @@ void MainWindow::buildDocks() {
 /* ---- 工具栏动作 ---- */
 
 void MainWindow::onYoloModel() {
+  SPDLOG_INFO("[UI] 点击 YOLO模型");
   QString f = QFileDialog::getOpenFileName(
       this, QStringLiteral("选择 YOLO 模型"),
       QString::fromStdString(config::g.fb_model_dir),
       QStringLiteral("RKNN 模型 (*.rknn);;所有文件 (*)"));
-  if (f.isEmpty()) return;
+  if (f.isEmpty()) {
+    SPDLOG_INFO("[UI] YOLO模型选择取消");
+    return;
+  }
   yolo_path_ = trim_path(f.toStdString());
   config::g.yolo_model = yolo_path_;
   config::mark_dirty();
@@ -196,11 +254,15 @@ void MainWindow::onYoloModel() {
 }
 
 void MainWindow::onLabelFile() {
+  SPDLOG_INFO("[UI] 点击 标签文件");
   QString f = QFileDialog::getOpenFileName(
       this, QStringLiteral("选择标签文件"),
       QString::fromStdString(config::g.fb_model_dir),
       QStringLiteral("文本 (*.txt);;所有文件 (*)"));
-  if (f.isEmpty()) return;
+  if (f.isEmpty()) {
+    SPDLOG_INFO("[UI] 标签文件选择取消");
+    return;
+  }
   label_path_ = trim_path(f.toStdString());
   config::g.label_path = label_path_;
   config::mark_dirty();
@@ -210,6 +272,7 @@ void MainWindow::onLabelFile() {
 }
 
 void MainWindow::onInputSource() {
+  SPDLOG_INFO("[UI] 点击 输入源");
   QMessageBox box(this);
   box.setWindowTitle(QStringLiteral("选择输入源"));
   box.setText(QStringLiteral("请选择输入源类型:"));
@@ -263,6 +326,8 @@ void MainWindow::onInputSource() {
 }
 
 void MainWindow::onStart() {
+  SPDLOG_INFO("[UI] 点击 开始 (输入={}, 模型={}, 标签={})", input_path_,
+              base_name(yolo_path_), base_name(label_path_));
   if (pipeline::g_state.load() == pipeline::ST_RUNNING) return;
   if (!use_camera_ && input_path_.empty()) {
     stats_->setStatus(QStringLiteral("请先选择 输入/YOLO模型/标签"));
@@ -288,6 +353,7 @@ void MainWindow::onStart() {
 }
 
 void MainWindow::onStop() {
+  SPDLOG_INFO("[UI] 点击 停止");
   if (pipeline::g_state.load() != pipeline::ST_RUNNING) return;
   pipeline::stop_and_join();
   act_start_->setEnabled(true);
@@ -296,6 +362,7 @@ void MainWindow::onStop() {
 }
 
 void MainWindow::onCapture() {
+  SPDLOG_INFO("[UI] 点击 采集图像");
   if (pipeline::g_state.load() == pipeline::ST_RUNNING) {
     act_capture_->setChecked(false);
     return;
@@ -329,7 +396,11 @@ bool MainWindow::confirmQuit() {
 }
 
 void MainWindow::onQuit() {
-  if (!confirmQuit()) return;
+  SPDLOG_INFO("[UI] 点击 退出");
+  if (!confirmQuit()) {
+    SPDLOG_INFO("[UI] 退出已取消");
+    return;
+  }
   close();
 }
 
@@ -427,9 +498,13 @@ void MainWindow::pollAux() {
 }
 
 void MainWindow::pollConfig() {
-  if (pipeline::g_state.load() != pipeline::ST_RUNNING &&
-      config::poll_hot_reload())
-    syncConfigToUi(false);
+  if (pipeline::g_state.load() != pipeline::ST_RUNNING) {
+    Config snapshot = config::g;  /* 热加载前快照,加载后 diff 出审计日志 */
+    if (config::poll_hot_reload()) {
+      log_config_diff(snapshot, config::g);
+      syncConfigToUi(false);
+    }
+  }
   /* 曝光/增益热加载:配置变化即下发相机,运行中同样生效 */
   static int last_exp = -1;
   static double last_gain = -2;

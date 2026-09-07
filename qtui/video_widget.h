@@ -27,6 +27,8 @@ class VideoWidget : public QWidget {
  signals:
   /* 竖线被拖动(比例已 clamp),主窗口写 config + mark_dirty */
   void linesChanged(double left, double right);
+  /* 拖动松手(一次拖拽结束),用于审计日志 */
+  void dragFinished();
 
  protected:
   void paintEvent(QPaintEvent *) override;
