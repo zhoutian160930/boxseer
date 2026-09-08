@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <opencv2/opencv.hpp>
 #include <unistd.h>
+#include "affinity.h"
 #include "rknn_pool.h"
 #include "mobilesam/mobilesam_pool.h"
 #include "image_process.h"
@@ -50,6 +51,7 @@ int main(int argc, char **argv) {
     if (config::g.gpio_input_enabled) {
         gpio_in::init(config::g.gpio_input_ch);
         std::thread([] {
+            affinity::pin_cpu(0);  /* GPIO 轮询独占小核0 */
             /* 高频轮询捕捉对端单脉冲: 连续2次HIGH(去抖)即认定有效 */
             int high_run = 0;
             bool latched = false;

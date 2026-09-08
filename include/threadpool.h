@@ -15,9 +15,12 @@
 #include <vector>
 #include <pthread.h>
 
+#include "affinity.h"
+
 class ThreadPool {
  public:
-  ThreadPool(size_t);
+  /* pin_big_cores: worker 线程钉到 A76 大核(RK3588 cpu4-7),推理池用 */
+  ThreadPool(size_t, bool pin_big_cores = true);
   template <class F, class... Args>
   auto enqueue(F&& f, Args&&... args)
       -> std::future<typename std::result_of<F(Args...)>::type>;
@@ -38,11 +41,12 @@ class ThreadPool {
 };
 
 // the constructor just launches some amount of workers
-inline ThreadPool::ThreadPool(size_t threads) : stop(false) {
+inline ThreadPool::ThreadPool(size_t threads, bool pin_big_cores) : stop(false) {
   for (size_t i = 0; i < threads; ++i)
-    workers.emplace_back([this](int i) {
+    workers.emplace_back([this, pin_big_cores](int i) {
       auto thread_name = "thread" + std::to_string(i);
       pthread_setname_np(pthread_self(), thread_name.c_str());
+      if (pin_big_cores) affinity::pin_big();
       for (;;) {
         std::function<void()> task;
 

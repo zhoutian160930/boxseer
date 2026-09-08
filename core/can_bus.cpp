@@ -12,6 +12,8 @@
 #include <thread>
 #include <unistd.h>
 
+#include "affinity.h"
+
 namespace can_bus {
 
 static int g_send_fd = -1;
@@ -81,7 +83,10 @@ bool init(const std::string &send_if, const std::string &recv_if, int can_id) {
     fcntl(g_recv_fd, F_SETFL, flags | O_NONBLOCK);  // 非阻塞
     SPDLOG_INFO("CAN: 接收接口 {} 就绪", recv_if);
     g_running = true;
-    g_recv_thread = std::thread(recv_loop);
+    g_recv_thread = std::thread([] {
+      affinity::pin_small();  /* CAN 收发钉到 A55 小核,不占推理大核 */
+      recv_loop();
+    });
     std::atexit(+[] { shutdown(); });  /* 进程退出时自动回收线程(Ui/headless通用) */
   } else {
     SPDLOG_WARN("CAN: 接收接口 {} 不可用，仅发送模式", recv_if);

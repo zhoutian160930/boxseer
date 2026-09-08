@@ -6,6 +6,7 @@
 #include <thread>
 #include <unistd.h>
 
+#include "affinity.h"
 #include "can_bus.h"
 #include "config.h"
 #include "gpio_in.h"
@@ -25,6 +26,7 @@ int main(int argc, char *argv[]) {
   if (config::g.gpio_input_enabled) {
     gpio_in::init(config::g.gpio_input_ch);
     std::thread([] {
+      affinity::pin_cpu(0);  /* GPIO 轮询独占小核0, 低延迟且不扰大核推理 */
       /* 高频轮询捕捉对端单脉冲: 连续2次HIGH(去抖)即认定有效 */
       int high_run = 0;
       bool latched = false;

@@ -2,6 +2,8 @@
 
 #include <unistd.h>
 
+#include "affinity.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -85,6 +87,7 @@ bool running() { return g_worker.joinable(); }
 
 /* ---- worker(逻辑与旧 ui_app.cpp::worker_fn 一致) ---- */
 static void worker_fn() {
+  affinity::pin_big();  /* 图像处理主循环钉到 A76 大核 */
   g_state = ST_RUNNING;
   g_proc_count = 0;
   g_correct_count = 0;

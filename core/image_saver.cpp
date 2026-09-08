@@ -3,6 +3,8 @@
 #include <spdlog/spdlog.h>
 #include <opencv2/imgcodecs.hpp>
 
+#include "affinity.h"
+
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -27,6 +29,7 @@ static std::atomic<unsigned long long> g_dropped{0};
 static std::atomic<unsigned long long> g_saved{0};
 
 static void worker_fn() {
+  affinity::pin_small();  /* 磁盘存图 IO 钉到 A55 小核 */
   while (true) {
     Task t;
     {
