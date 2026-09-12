@@ -16,11 +16,13 @@ static int g_ch = -1;
 static int g_last_level = 0;  /* 物理电平 */
 
 bool init(int ch) {
-  if (ch < 0 || ch > 3) {
-    SPDLOG_WARN("GPIO-out: 通道号 {} 非法(有效 0-3)", ch);
+  /* ch 为板子丝印脚号 1-4 (DO1-DO4), 节点序号为 ch-1 */
+  if (ch < 1 || ch > 4) {
+    SPDLOG_WARN("GPIO-out: 脚号 {} 非法(有效 1-4)", ch);
     return false;
   }
-  std::string path = "/sys/class/gpio/gpiof_out" + std::to_string(ch) + "/value";
+  std::string path =
+      "/sys/class/gpio/gpiof_out" + std::to_string(ch - 1) + "/value";
   g_value_fd = open(path.c_str(), O_WRONLY);
   if (g_value_fd < 0) {
     SPDLOG_WARN("GPIO-out: 打开 {} 失败: {}", path, strerror(errno));
@@ -28,7 +30,7 @@ bool init(int ch) {
   }
   g_ch = ch;
   set_qualified(false);  /* 初始: 不满足 → 高电平 */
-  SPDLOG_INFO("GPIO-out: DO{} ({}) 就绪, 初始 HIGH(不满足)", ch + 1, path);
+  SPDLOG_INFO("GPIO-out: DO{} ({}) 就绪, 初始 HIGH(不满足)", ch, path);
   std::atexit(+[] { shutdown(); });
   return true;
 }
@@ -42,7 +44,7 @@ void set_qualified(bool ok) {
     return;
   }
   g_last_level = ok ? 0 : 1;
-  SPDLOG_INFO("[GPIO-out] DO{}={} ({})", g_ch + 1, ok ? "LOW" : "HIGH",
+  SPDLOG_INFO("[GPIO-out] DO{}={} ({})", g_ch, ok ? "LOW" : "HIGH",
               ok ? "满足" : "不满足");
 }
 
@@ -51,7 +53,7 @@ void shutdown() {
     set_qualified(false);  /* 退出恢复高电平(不满足), 与旧版语义一致 */
     close(g_value_fd);
     g_value_fd = -1;
-    SPDLOG_INFO("GPIO-out: DO{} 已恢复 HIGH", g_ch + 1);
+    SPDLOG_INFO("GPIO-out: DO{} 已恢复 HIGH", g_ch);
     g_ch = -1;
   }
 }

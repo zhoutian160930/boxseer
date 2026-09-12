@@ -33,14 +33,14 @@ int main(int argc, char *argv[]) {
       bool was_paused = false;
       int poll_us = std::max(100, config::g.gpio_poll_us);
       SPDLOG_INFO("[GPIO-ctrl] DI{} 轮询线程启动 ({}us)",
-                  config::g.gpio_input_ch + 1, poll_us);
+                  config::g.gpio_input_ch, poll_us);
       while (true) {
         int v = gpio_in::read_fast();
         high_run = (v == 1) ? high_run + 1 : 0;
         if (!latched && high_run >= 2) {
           latched = true;
           SPDLOG_WARN("[GPIO-ctrl] DI{} 捕捉到脉冲 → 系统暂停",
-                      config::g.gpio_input_ch + 1);
+                      config::g.gpio_input_ch);
         }
         bool paused = config::g.gpio_input_latch
                           ? latched

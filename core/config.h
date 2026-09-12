@@ -38,9 +38,9 @@ struct Config {
   /* GPIO(VR58H3 板载 DO/DI, 命名节点 /sys/class/gpio/gpiof_outN / gpiof_inN)
    * DO 写值反相: 写0=高电平, 写1=低电平; 业务: 合格→低电平 */
   bool gpio_enabled = true;
-  int gpio_out_ch = 0;                 /* DO 通道 0-3 (DO1~DO4) */
+  int gpio_out_ch = 1;                 /* DO 丝印脚号 1-4 (DO1~DO4) */
   bool gpio_input_enabled = true;
-  int gpio_input_ch = 0;               /* DI 通道 0-3 (DI1~DI4) */
+  int gpio_input_ch = 1;               /* DI 丝印脚号 1-4 (DI1~DI4) */
   int gpio_poll_us = 500;              /* DI 轮询周期(微秒), 对端单脉冲需高频捕捉 */
   bool gpio_input_latch = true;        /* true: 采到 HIGH 即锁定暂停(单脉冲); false: 电平跟随 */
   /* 摄像头(海康威视工业相机 via MVS SDK) */

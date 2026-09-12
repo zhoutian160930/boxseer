@@ -16,18 +16,20 @@ static int g_ch = -1;
 static std::atomic<bool> g_paused{false};
 
 bool init(int ch) {
-  if (ch < 0 || ch > 3) {
-    SPDLOG_WARN("GPIO-in: 通道号 {} 非法(有效 0-3)", ch);
+  /* ch 为板子丝印脚号 1-4 (DI1-DI4), 节点序号为 ch-1 */
+  if (ch < 1 || ch > 4) {
+    SPDLOG_WARN("GPIO-in: 脚号 {} 非法(有效 1-4)", ch);
     return false;
   }
-  std::string path = "/sys/class/gpio/gpiof_in" + std::to_string(ch) + "/value";
+  std::string path =
+      "/sys/class/gpio/gpiof_in" + std::to_string(ch - 1) + "/value";
   g_value_fd = open(path.c_str(), O_RDONLY);
   if (g_value_fd < 0) {
     SPDLOG_WARN("GPIO-in: 打开 {} 失败: {}", path, strerror(errno));
     return false;
   }
   g_ch = ch;
-  SPDLOG_INFO("GPIO-in: DI{} ({}) 就绪, 高频轮询模式", ch + 1, path);
+  SPDLOG_INFO("GPIO-in: DI{} ({}) 就绪, 高频轮询模式", ch, path);
   std::atexit(+[] { shutdown(); });
   return true;
 }
@@ -41,7 +43,8 @@ int read_fast() {
 
 int read() {
   if (g_ch < 0) return -1;
-  std::string path = "/sys/class/gpio/gpiof_in" + std::to_string(g_ch) + "/value";
+  std::string path =
+      "/sys/class/gpio/gpiof_in" + std::to_string(g_ch - 1) + "/value";
   int fd = open(path.c_str(), O_RDONLY);
   if (fd < 0) return -1;
   char buf[4];

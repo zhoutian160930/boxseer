@@ -3,7 +3,7 @@
 
 namespace gpio_out {
 
-/* VR58H3 DO 通道(0-3 → /sys/class/gpio/gpiof_out0~3)。
+/* VR58H3 DO 通道(板子丝印脚号 1-4 → gpiof_out0~3)。
  * 注意: 该板 DO 逻辑反相 —— 写"0"=高电平, 写"1"=低电平。 */
 bool init(int ch);
 void set_qualified(bool ok);

@@ -3,7 +3,7 @@
 
 namespace gpio_in {
 
-/* VR58H3 DI 通道(0-3 → /sys/class/gpio/gpiof_in0~3) */
+/* VR58H3 DI 通道(板子丝印脚号 1-4 → gpiof_in0~3) */
 bool init(int ch);
 void shutdown();
 
