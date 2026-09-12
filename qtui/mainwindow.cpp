@@ -11,6 +11,7 @@
 #include <QStatusBar>
 #include <QTimer>
 #include <QToolBar>
+#include <QToolButton>
 
 #include <spdlog/spdlog.h>
 
@@ -206,9 +207,12 @@ void MainWindow::buildToolbar() {
   act_capture_->setCheckable(true);
   connect(act_capture_, &QAction::triggered, this, &MainWindow::onCapture);
 
-  /* 配方: 保存/读取 产品参数快照(config/recipes/*.json) */
-  auto *m_recipe = tb->addAction(QStringLiteral("配方"));
-  auto *recipe_menu = new QMenu(this);
+  /* 配方: 保存/读取 产品参数快照(config/recipes/*.json)。
+   * 必须用 QToolButton + InstantPopup; QAction::setMenu 在工具栏中点击不弹菜单 */
+  auto *btn_recipe = new QToolButton(this);
+  btn_recipe->setText(QStringLiteral("配方"));
+  btn_recipe->setPopupMode(QToolButton::InstantPopup);
+  auto *recipe_menu = new QMenu(btn_recipe);
   auto *a_save = recipe_menu->addAction(QStringLiteral("保存配方"));
   connect(a_save, &QAction::triggered, this, &MainWindow::onSaveRecipe);
   auto *m_load = recipe_menu->addMenu(QStringLiteral("读取配方"));
@@ -226,7 +230,8 @@ void MainWindow::buildToolbar() {
     if (m_load->isEmpty())
       m_load->addAction(QStringLiteral("(无配方)"))->setEnabled(false);
   });
-  m_recipe->setMenu(recipe_menu);
+  btn_recipe->setMenu(recipe_menu);
+  tb->addWidget(btn_recipe);
 
   auto *m_quit = tb->addAction(QStringLiteral("退出"));
   connect(m_quit, &QAction::triggered, this, &MainWindow::onQuit);
