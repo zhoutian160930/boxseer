@@ -7,3 +7,5 @@ config/*
 !config/parameters.json
 MvSdkLog/
 output/
+scripts/
+
