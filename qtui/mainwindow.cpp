@@ -5,6 +5,8 @@
 #include <QCloseEvent>
 #include <QDockWidget>
 #include <QFileDialog>
+#include <QInputDialog>
+#include <QMenu>
 #include <QMessageBox>
 #include <QStatusBar>
 #include <QTimer>
@@ -204,6 +206,28 @@ void MainWindow::buildToolbar() {
   act_capture_->setCheckable(true);
   connect(act_capture_, &QAction::triggered, this, &MainWindow::onCapture);
 
+  /* 配方: 保存/读取 产品参数快照(config/recipes/*.json) */
+  auto *m_recipe = tb->addAction(QStringLiteral("配方"));
+  auto *recipe_menu = new QMenu(this);
+  auto *a_save = recipe_menu->addAction(QStringLiteral("保存配方"));
+  connect(a_save, &QAction::triggered, this, &MainWindow::onSaveRecipe);
+  auto *m_load = recipe_menu->addMenu(QStringLiteral("读取配方"));
+  connect(m_load, &QMenu::aboutToShow, this, [this, m_load] {
+    m_load->clear();
+    std::error_code ec;
+    for (auto &e : fs::directory_iterator(config::recipes_dir(), ec)) {
+      if (!e.is_regular_file(ec)) continue;
+      std::string fn = e.path().filename().string();
+      if (fn.size() > 5 && fn.substr(fn.size() - 5) == ".json") {
+        QString nm = QString::fromStdString(fn.substr(0, fn.size() - 5));
+        m_load->addAction(nm, this, [this, nm] { onLoadRecipe(nm); });
+      }
+    }
+    if (m_load->isEmpty())
+      m_load->addAction(QStringLiteral("(无配方)"))->setEnabled(false);
+  });
+  m_recipe->setMenu(recipe_menu);
+
   auto *m_quit = tb->addAction(QStringLiteral("退出"));
   connect(m_quit, &QAction::triggered, this, &MainWindow::onQuit);
 }
@@ -389,8 +413,61 @@ void MainWindow::onCapture() {
   }
 }
 
-bool MainWindow::confirmQuit() {
-  auto btn = QMessageBox::question(
+void MainWindow::onSaveRecipe() {
+  SPDLOG_INFO("[UI] 点击 配方→保存配方");
+  QString name =
+      QInputDialog::getText(this, QStringLiteral("保存配方"),
+                            QStringLiteral("配方名称:"))
+          .trimmed();
+  if (name.isEmpty()) {
+    SPDLOG_INFO("[UI] 保存配方取消");
+    return;
+  }
+  std::string s = name.toStdString();
+  std::string path = config::recipes_dir() + "/" + s + ".json";
+  if (fs::exists(path)) {
+    if (QMessageBox::question(this, QStringLiteral("覆盖配方"),
+                              QStringLiteral("配方已存在, 覆盖?")) !=
+        QMessageBox::Yes) {
+      SPDLOG_INFO("[UI] 保存配方取消(不覆盖): {}", s);
+      return;
+    }
+  }
+  if (config::save_recipe(s)) {
+    SPDLOG_INFO("[UI] 保存配方: {} (模型={}, 标签={}, 物料类={}, 盒子类={}, "
+                "目标数={}, 线=[{:.4f},{:.4f}])",
+                s, base_name(config::g.yolo_model), base_name(config::g.label_path),
+                config::g.material_class, config::g.box_class,
+                config::g.target_count, (double)config::g.line_left_frac,
+                (double)config::g.line_right_frac);
+    statusBar()->showMessage(QStringLiteral("配方已保存: %1").arg(name), 3000);
+  } else {
+    SPDLOG_ERROR("[UI] 保存配方失败: {}", s);
+    statusBar()->showMessage(QStringLiteral("配方保存失败"), 3000);
+  }
+}
+
+void MainWindow::onLoadRecipe(const QString &name) {
+  std::string s = name.toStdString();
+  SPDLOG_INFO("[UI] 点击 配方→读取配方: {}", s);
+  Config snapshot = config::g;
+  if (!config::load_recipe(s)) {
+    SPDLOG_ERROR("[UI] 读取配方失败: {}", s);
+    statusBar()->showMessage(QStringLiteral("配方读取失败"), 3000);
+    return;
+  }
+  log_config_diff(snapshot, config::g);  /* 审计: 逐字段记变更 */
+  bool model_changed = (snapshot.yolo_model != config::g.yolo_model) ||
+                       (snapshot.label_path != config::g.label_path);
+  config::mark_dirty();   /* 防抖写回 parameters.json */
+  syncConfigToUi(false);  /* 回填 UI/pipeline;模型变更自动释放模型池 */
+  if (model_changed && pipeline::g_state.load() == pipeline::ST_RUNNING)
+    QMessageBox::information(this, QStringLiteral("提示"),
+                             QStringLiteral("配方中的模型将在本次运行结束后,下次\"开始\"时生效。"));
+  statusBar()->showMessage(QStringLiteral("配方已加载: %1").arg(name), 3000);
+}
+
+bool MainWindow::confirmQuit() {  auto btn = QMessageBox::question(
       this, QStringLiteral("退出"),
       QStringLiteral("确定退出程序?"),
       QMessageBox::Yes | QMessageBox::No, QMessageBox::No);

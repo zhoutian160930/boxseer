@@ -38,6 +38,7 @@ Two modes, selected at build time by `WITH_UI` define:
 - **Auto-save**: UI changes are written back to disk with 1s debounce via `mark_dirty()` / `poll_save_due()`.
 - Config is initialized with: `config::init("/path/to/config/dir", "parameters.json")`.
 - `config::g` is the global singleton — thread-safe for reads, caller must serialize writes.
+- **Recipes (配方)**: product-param snapshots (model, label, material/box class, target count, line fracs) saved/loaded via `config::save_recipe(name)` / `load_recipe(name)`, stored in `<config_dir>/recipes/<name>.json`. UI toolbar "配方" menu provides save/load.
 
 ## Key conventions
 

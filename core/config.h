@@ -84,4 +84,11 @@ bool poll_save_due();
 
 /* 标记内存值已改、需要回写（UI 改动后调用，实际写入会防抖节流）。 */
 void mark_dirty();
+
+/* 配方(仅产品相关参数快照): 存于 <config_dir>/recipes/<name>.json
+ * 包含: yolo_model/label_path/material_class/box_class/target_count/
+ *       line_left_frac/line_right_frac */
+bool save_recipe(const std::string &name);   /* name 不得含路径分隔符 */
+bool load_recipe(const std::string &name);   /* 加载进 config::g */
+std::string recipes_dir();                   /* 配方目录路径 */
 }

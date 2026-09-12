@@ -206,6 +206,61 @@ bool poll_hot_reload() {
 
 void mark_dirty() { dirty = true; }
 
+/* ---------- 配方(产品参数快照) ---------- */
+
+/* 配方包含的产品相关字段白名单 */
+static bool is_recipe_key(const std::string &k) {
+  static const char *kKeys[] = {"yolo_model",     "label_path",  "material_class",
+                                "box_class",      "target_count", "line_left_frac",
+                                "line_right_frac"};
+  for (const char *kk : kKeys)
+    if (k == kk) return true;
+  return false;
+}
+
+std::string recipes_dir() {
+  if (file_path.empty()) return "config/recipes";
+  return (fs::path(file_path).parent_path() / "recipes").string();
+}
+
+bool save_recipe(const std::string &name) {
+  if (name.empty() || name.find('/') != std::string::npos ||
+      name.find('\\') != std::string::npos)
+    return false;
+  std::error_code ec;
+  fs::create_directories(recipes_dir(), ec);
+  std::ofstream out(recipes_dir() + "/" + name + ".json", std::ios::trunc);
+  if (!out.is_open()) return false;
+  out << "{\n";
+  out << "  \"yolo_model\": \"" << g.yolo_model << "\",\n";
+  out << "  \"label_path\": \"" << g.label_path << "\",\n";
+  out << "  \"material_class\": " << g.material_class << ",\n";
+  out << "  \"box_class\": " << g.box_class << ",\n";
+  out << "  \"target_count\": " << g.target_count << ",\n";
+  out << "  \"line_left_frac\": " << g.line_left_frac << ",\n";
+  out << "  \"line_right_frac\": " << g.line_right_frac << "\n";
+  out << "}\n";
+  return true;
+}
+
+bool load_recipe(const std::string &name) {
+  if (name.empty() || name.find('/') != std::string::npos ||
+      name.find('\\') != std::string::npos)
+    return false;
+  std::ifstream in(recipes_dir() + "/" + name + ".json");
+  if (!in.is_open()) return false;
+  bool any = false;
+  std::string line;
+  while (std::getline(in, line)) {
+    std::string k, v;
+    if (!parse_line(line, k, v)) continue;
+    if (!is_recipe_key(k)) continue;  /* 配方外字段一律忽略 */
+    apply_kv(k, v);
+    any = true;
+  }
+  return any;
+}
+
 bool poll_save_due() {
   if (!dirty) return false;
   auto now = std::chrono::steady_clock::now();

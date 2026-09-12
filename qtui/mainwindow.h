@@ -32,6 +32,8 @@ class MainWindow : public QMainWindow {
   void onStart();
   void onStop();
   void onCapture();
+  void onSaveRecipe();
+  void onLoadRecipe(const QString &name);
   void onQuit();
 
   /* 桥 */
